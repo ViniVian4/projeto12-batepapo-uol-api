@@ -89,9 +89,10 @@ app.post('/messages', async (req, res) => {
     }
 
     const dbUser = await db.collection('users').findOne({ name: from });
+    const dbTo = await db.collection('users').findOne({ name: message.to });
 
-    if (!dbUser) {
-        res.status(422).send("esse usuário não existe");
+    if (!dbUser || !dbTo) {
+        res.sendStatus(422);
         return;
     }
 
@@ -105,6 +106,28 @@ app.post('/messages', async (req, res) => {
             time: date
         });
         res.sendStatus(201);
+    } catch (error) {
+        res.sendStatus(500);
+    }
+});
+
+app.get('/messages', async (req, res) => {
+    try {
+        const { limit } = req.query;
+        const { user } = req.headers;
+        const messages = await db.collection('messages').find().toArray();
+
+        let visibleMessages = messages.filter(message => {
+            return (message.type === "message" ||
+                (message.type === "private_message" &&
+                    (message.from === user || message.to === user)));
+        });
+
+        if (limit) {
+            visibleMessages = visibleMessages.slice(-Number(limit));
+        }
+
+        res.send(visibleMessages);
     } catch (error) {
         res.sendStatus(500);
     }
