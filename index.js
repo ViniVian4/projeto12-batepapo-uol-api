@@ -4,7 +4,8 @@ import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 import joi from 'joi';
-import dayjs from 'dayjs';
+import dayjs from 'dayjs';  
+import { ObjectID } from 'bson';
 
 const userSchema = joi.object(
     {
@@ -29,6 +30,23 @@ let db;
 mongoClient.connect().then(() => {
     db = mongoClient.db('uol');
 });
+
+setInterval(async () => {
+    const users = await db.collection('users').find().toArray();
+
+    users.forEach(async (value) => {
+        const date = dayjs().format('DD/MM/YYYY');
+        await db.collection('messages').insertOne({
+            from: value.name,
+            to: "Todos",
+            text: "Sai da sala...",
+            type: "status",
+            time: date
+        });
+        await db.collection('users').deleteOne({ _id: new ObjectID(value._id)});
+    });
+
+}, 15000);
 
 app.post('/participants', async (req, res) => {
     const user = req.body;
@@ -64,7 +82,6 @@ app.post('/participants', async (req, res) => {
         res.sendStatus(201);
 
     } catch (error) {
-        console.log(error);
         res.sendStatus(500);
     }
 });
@@ -91,7 +108,7 @@ app.post('/messages', async (req, res) => {
     const dbUser = await db.collection('users').findOne({ name: from });
     const dbTo = await db.collection('users').findOne({ name: message.to });
 
-    if (!dbUser || !dbTo) {
+    if (!dbUser) {
         res.sendStatus(422);
         return;
     }
@@ -151,16 +168,10 @@ app.post('/status', async (req, res) => {
                     lastStatus: Date.now()
                 }
             });
-            res.sendStatus(200);
+        res.sendStatus(200);
     } catch (error) {
         res.sendStatus(500);
     }
 });
-
-
-
-
-
-
 
 app.listen(5000);
