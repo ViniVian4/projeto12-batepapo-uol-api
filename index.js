@@ -4,7 +4,7 @@ import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 import joi from 'joi';
-import dayjs from 'dayjs';  
+import dayjs from 'dayjs';
 import { ObjectID } from 'bson';
 
 const userSchema = joi.object(
@@ -35,15 +35,17 @@ setInterval(async () => {
     const users = await db.collection('users').find().toArray();
 
     users.forEach(async (value) => {
-        const date = dayjs().format('DD/MM/YYYY');
-        await db.collection('messages').insertOne({
-            from: value.name,
-            to: "Todos",
-            text: "Sai da sala...",
-            type: "status",
-            time: date
-        });
-        await db.collection('users').deleteOne({ _id: new ObjectID(value._id)});
+        if (Number(Date.now()) - Number(value.lastStatus) >= 15000) {
+            const date = dayjs().format('DD/MM/YYYY');
+            await db.collection('messages').insertOne({
+                from: value.name,
+                to: "Todos",
+                text: "Sai da sala...",
+                type: "status",
+                time: date
+            });
+            await db.collection('users').deleteOne({ _id: new ObjectID(value._id) });
+        }
     });
 
 }, 15000);
