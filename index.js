@@ -4,6 +4,20 @@ import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 import joi from 'joi';
+import dayjs from 'dayjs';
+
+const userSchema = joi.object(
+    {
+        name: joi.string().required()
+    }
+);
+const messageSchema = joi.object(
+    {
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().required
+    }
+);
 
 const app = express();
 app.use(express.json());
@@ -16,7 +30,44 @@ mongoClient.connect().then(() => {
     db = mongoClient.db('uol');
 });
 
+app.post('/participants', async (req, res) => {
+    const user = req.body;
 
+    const validation = userSchema.validate(user, { abortEarly: true });
+    if (validation.error) {
+        res.status(422).send("name deve ser uma string não vazia");
+        return;
+    }
+
+    try {
+        const createdUser = await db.collection('users').findOne(user);
+        const date = dayjs().format('DD/MM/YYYY');
+
+        if (createdUser) {
+            res.status(409).send("esse usuário já existe");
+            return;
+        }
+
+        await db.collection('users').insertOne({
+            name: user.name,
+            lastStatus: Date.now()
+        });
+
+        await db.collection('messages').insertOne({
+            from: user.name,
+            to: "Todos",
+            text: "Entra na sala...",
+            type: "status",
+            time: date
+        });
+
+        res.sendStatus(201);
+
+    } catch (error) {
+        console.log(error);
+        res.sendStatus(500);
+    }
+})
 
 
 
