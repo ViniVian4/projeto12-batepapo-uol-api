@@ -15,7 +15,7 @@ const messageSchema = joi.object(
     {
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.string().required
+        type: joi.boolean().truthy('message', 'private_message')
     }
 );
 
@@ -40,10 +40,10 @@ app.post('/participants', async (req, res) => {
     }
 
     try {
-        const createdUser = await db.collection('users').findOne(user);
+        const dbUser = await db.collection('users').findOne(user);
         const date = dayjs().format('DD/MM/YYYY');
 
-        if (createdUser) {
+        if (dbUser) {
             res.status(409).send("esse usuário já existe");
             return;
         }
@@ -73,6 +73,38 @@ app.get('/participants', async (req, res) => {
     try {
         const participants = await db.collection('users').find().toArray();
         res.send(participants);
+    } catch (error) {
+        res.sendStatus(500);
+    }
+});
+
+app.post('/messages', async (req, res) => {
+    const message = req.body;
+    const from = req.headers.user;
+
+    const messageValidation = messageSchema.validate(message, { abortEarly: true });
+    if (messageValidation.error) {
+        res.sendStatus(422);
+        return;
+    }
+
+    const dbUser = await db.collection('users').findOne({ name: from });
+
+    if (!dbUser) {
+        res.status(422).send("esse usuário não existe");
+        return;
+    }
+
+    try {
+        const date = dayjs().format('DD/MM/YYYY');
+        await db.collection('messages').insertOne({
+            from: from,
+            to: message.to,
+            text: message.text,
+            type: message.type,
+            time: date
+        });
+        res.sendStatus(201);
     } catch (error) {
         res.sendStatus(500);
     }
