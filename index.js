@@ -133,6 +133,30 @@ app.get('/messages', async (req, res) => {
     }
 });
 
+app.post('/status', async (req, res) => {
+    const { user } = req.headers;
+    const dbUser = await db.collection('users').findOne({ name: user });
+
+    if (!dbUser) {
+        res.sendStatus(404);
+        return;
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { _id: dbUser._id },
+            {
+                $set: {
+                    name: dbUser.name,
+                    lastStatus: Date.now()
+                }
+            });
+            res.sendStatus(200);
+    } catch (error) {
+        res.sendStatus(500);
+    }
+});
+
 
 
 
