@@ -106,7 +106,6 @@ app.post('/messages', async (req, res) => {
     }
 
     const dbUser = await db.collection('users').findOne({ name: from });
-    const dbTo = await db.collection('users').findOne({ name: message.to });
 
     if (!dbUser) {
         res.sendStatus(422);
